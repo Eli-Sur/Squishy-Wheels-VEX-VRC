@@ -100,7 +100,11 @@ bool RemoteControlCodeEnabled = true;
 /*---------------------------------------------------------------------------*/
 
 void pre_auton(void) {
-
+  leftTopMotor.setVelocity(100.0, percent);
+  leftBackMotor.setVelocity(100.0, percent);
+  rightBackMotor.setVelocity(100.0, percent);
+  rightTopMotor.setVelocity(100.0, percent);
+  intakeRamp.setVelocity(100.0, percent);
   // All activities that occur before the competition starts
   // Example: clearing encoders, setting servo positions, ...
 }
@@ -137,7 +141,11 @@ void usercontrol(void) {
     // This is the main execution loop for the user control program.
     // Each time through the loop your program should update motor + servo
     // values based on feedback from the joysticks.
-
+    leftTopMotor.spin(forward, (Controller1.Axis3.position() + Controller1.Axis4.position()) / 90.0 * 12, volt);
+    leftBackMotor.spin(forward, (Controller1.Axis3.position() + Controller1.Axis4.position()) / 90.0 * 12, volt);
+    rightTopMotor.spin(forward, (Controller1.Axis3.position() - Controller1.Axis4.position()) / 90.0 * 12, volt);
+    rightBackMotor.spin(forward, (Controller1.Axis3.position() - Controller1.Axis4.position()) / 90.0 * 12, volt);
+    intakeRamp.spin(forward, Controller1.Axis2.position() / 90.0 * 12, volt);
     // ........................................................................
     // Insert user code here. This is where you use the joystick values to
     // update your motors, etc.
