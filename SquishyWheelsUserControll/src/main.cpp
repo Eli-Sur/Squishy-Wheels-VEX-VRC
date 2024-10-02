@@ -135,17 +135,50 @@ void autonomous(void) {
 /*  You must modify the code to add your own robot specific commands here.   */
 /*---------------------------------------------------------------------------*/
 
+bool spinRamp = false;
+vex::directionType rampDirection = forward;
+
+void handleRampForward() {
+  if(rampDirection == forward) {
+    spinRamp = !spinRamp;
+  } else if(!spinRamp) {
+    spinRamp = true;
+    rampDirection = forward;
+  } else {
+    rampDirection = forward;
+  }
+  //waitUntil(!Controller1.ButtonR1.pressing());
+}
+
+void handleRampReverse() {
+  if(rampDirection == reverse) {
+    spinRamp = !spinRamp;
+  } else if(!spinRamp) {
+    spinRamp = true;
+    rampDirection = reverse;
+  } else {
+    rampDirection = reverse;
+  }
+  //waitUntil(!Controller1.ButtonR2.pressing());
+}
+
 void usercontrol(void) {
+  Controller1.ButtonR1.pressed(handleRampForward);
+  Controller1.ButtonR2.pressed(handleRampReverse);
   // User control code here, inside the loop
   while (1) {
     // This is the main execution loop for the user control program.
     // Each time through the loop your program should update motor + servo
     // values based on feedback from the joysticks.
-    leftTopMotor.spin(forward, (Controller1.Axis3.position() + Controller1.Axis4.position()) / 90.0 * 12, volt);
-    leftBackMotor.spin(forward, (Controller1.Axis3.position() + Controller1.Axis4.position()) / 90.0 * 12, volt);
-    rightTopMotor.spin(forward, (Controller1.Axis3.position() - Controller1.Axis4.position()) / 90.0 * 12, volt);
-    rightBackMotor.spin(forward, (Controller1.Axis3.position() - Controller1.Axis4.position()) / 90.0 * 12, volt);
-    intakeRamp.spin(forward, Controller1.Axis2.position() / 90.0 * 12, volt);
+    leftTopMotor.spin(forward, (Controller1.Axis3.position() + Controller1.Axis1.position() / 2) / 90.0 * 12, volt);
+    leftBackMotor.spin(forward, (Controller1.Axis3.position() + Controller1.Axis1.position() / 2) / 90.0 * 12, volt);
+    rightTopMotor.spin(forward, (Controller1.Axis3.position() - Controller1.Axis1.position() / 2) / 90.0 * 12, volt);
+    rightBackMotor.spin(forward, (Controller1.Axis3.position() - Controller1.Axis1.position() / 2) / 90.0 * 12, volt);
+    if(spinRamp) {
+      intakeRamp.spin(rampDirection, 12, volt);
+    } else {
+      intakeRamp.stop();
+    }
     // ........................................................................
     // Insert user code here. This is where you use the joystick values to
     // update your motors, etc.
