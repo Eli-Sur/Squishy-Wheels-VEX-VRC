@@ -48,7 +48,9 @@ motor leftBackMotor = motor(PORT11, ratio18_1, false);
 
 motor rightBackMotor = motor(PORT20, ratio18_1, true);
 
-motor intakeRamp = motor(PORT7, ratio18_1, false);
+motor intakeRamp = motor(PORT17, ratio18_1, false);
+
+motor flipArm = motor(PORT15, ratio36_1, false);
 
 controller Controller1 = controller(primary);
 
@@ -99,12 +101,19 @@ bool RemoteControlCodeEnabled = true;
 /*  not every time that the robot is disabled.                               */
 /*---------------------------------------------------------------------------*/
 
+void setFlipArm() {
+  flipArm.setPosition(-35, degrees);
+  //flipArm.spinTo(0, degrees, true);
+}
+
 void pre_auton(void) {
   leftTopMotor.setVelocity(100.0, percent);
   leftBackMotor.setVelocity(100.0, percent);
   rightBackMotor.setVelocity(100.0, percent);
   rightTopMotor.setVelocity(100.0, percent);
   intakeRamp.setVelocity(100.0, percent);
+  setFlipArm();
+
   // All activities that occur before the competition starts
   // Example: clearing encoders, setting servo positions, ...
 }
@@ -137,6 +146,7 @@ void autonomous(void) {
 
 bool spinRamp = false;
 vex::directionType rampDirection = forward;
+bool lockedRamp = false;
 
 void handleRampForward() {
   if(rampDirection == forward) {
@@ -162,9 +172,26 @@ void handleRampReverse() {
   //waitUntil(!Controller1.ButtonR2.pressing());
 }
 
+void handleLockStake() {
+  //waitUntil(!Controller1.ButtonL1.pressing());
+
+  if(!lockedRamp) {
+    flipArm.spin(forward, 10.0, volt);
+  } else {
+    flipArm.stop();
+    flipArm.spinTo(100, degrees, false);
+  }
+
+  lockedRamp = !lockedRamp;
+}
+
 void usercontrol(void) {
+  flipArm.spinTo(100, degrees);
+
   Controller1.ButtonR1.pressed(handleRampForward);
   Controller1.ButtonR2.pressed(handleRampReverse);
+  Controller1.ButtonL2.pressed(handleLockStake);
+
   // User control code here, inside the loop
   while (1) {
     // This is the main execution loop for the user control program.
