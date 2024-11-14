@@ -52,6 +52,10 @@ motor intakeRamp = motor(PORT17, ratio18_1, false);
 
 motor flipArm = motor(PORT15, ratio36_1, false);
 
+motor goalHitArm = motor(PORT18, ratio18_1, false);
+
+limit switchSensor = limit(Brain.ThreeWirePort.H);
+
 controller Controller1 = controller(primary);
 
 
@@ -102,8 +106,26 @@ bool RemoteControlCodeEnabled = true;
 /*---------------------------------------------------------------------------*/
 
 void setFlipArm() {
-  flipArm.setPosition(-35, degrees);
-  //flipArm.spinTo(0, degrees, true);
+  flipArm.setPosition(-10, degrees);
+  flipArm.spinTo(0, degrees, true);
+}
+
+
+void handleHitArm() {
+  goalHitArm.spinTo(90, degrees, true);
+  goalHitArm.spinTo(0, degrees, false);
+}
+
+void hitRing() {
+  waitUntil(!switchSensor.pressing());
+  //waitUntil(switchSensor.pressing());
+  //waitUntil(!switchSensor.pressing());
+
+  wait(0.2, seconds);
+
+  handleHitArm();
+  waitUntil(!goalHitArm.isSpinning());
+  handleHitArm();
 }
 
 void pre_auton(void) {
@@ -112,7 +134,10 @@ void pre_auton(void) {
   rightBackMotor.setVelocity(100.0, percent);
   rightTopMotor.setVelocity(100.0, percent);
   intakeRamp.setVelocity(100.0, percent);
+  goalHitArm.setVelocity(100.0, percent);
+  goalHitArm.setPosition(170.0, degrees);
   setFlipArm();
+  switchSensor.pressed(hitRing);
 
   // All activities that occur before the competition starts
   // Example: clearing encoders, setting servo positions, ...
@@ -128,11 +153,6 @@ void pre_auton(void) {
 /*  You must modify the code to add your own robot specific commands here.   */
 /*---------------------------------------------------------------------------*/
 
-void autonomous(void) {
-  // ..........................................................................
-  // Insert autonomous user code here.
-  // ..........................................................................
-}
 
 /*---------------------------------------------------------------------------*/
 /*                                                                           */
@@ -147,6 +167,29 @@ void autonomous(void) {
 bool spinRamp = false;
 vex::directionType rampDirection = forward;
 bool lockedRamp = false;
+
+void driveForward(float numSquares) {
+  float squareInTurns = 24.0 / ((1.5) * (1.5) * (3.14159));
+
+  rightBackMotor.spinTo(squareInTurns * numSquares, turns, false);
+  leftBackMotor.spinTo(squareInTurns * numSquares, turns, false);
+  rightTopMotor.spinTo(squareInTurns * numSquares, turns, false);
+  leftTopMotor.spinTo(squareInTurns * numSquares, turns, true);
+}
+
+void trunRight(float degree) {
+  float degreeInTurns = (6.5 * 6.5) / ((1.5) * (1.5));
+
+  rightBackMotor.spinTo(degreeInTurns * degree * -1, turns, false);
+  leftBackMotor.spinTo(degreeInTurns * degree, turns, false);
+  rightTopMotor.spinTo(degreeInTurns * degree * -1, turns, false);
+  leftTopMotor.spinTo(degreeInTurns * degree , turns, true);
+}
+
+void turnLeft(float degree) {
+  trunRight(degree * -1);
+}
+
 
 void handleRampForward() {
   if(rampDirection == forward) {
@@ -185,12 +228,37 @@ void handleLockStake() {
   lockedRamp = !lockedRamp;
 }
 
+
+void autonomous(void) {
+  // ..........................................................................
+  // Insert autonomous user code here.
+  // ..........................................................................
+
+  driveForward(1);
+  turnLeft(180);
+  driveForward(-1);
+
+  handleLockStake();
+
+  turnLeft(90);
+  handleRampForward();
+  driveForward(1);
+  driveForward(-1);
+  turnLeft(120);
+
+  handleLockStake();
+
+  driveForward(1);
+}
+
 void usercontrol(void) {
+  goalHitArm.spinTo(0, degrees);
   flipArm.spinTo(100, degrees);
 
   Controller1.ButtonR1.pressed(handleRampForward);
   Controller1.ButtonR2.pressed(handleRampReverse);
   Controller1.ButtonL2.pressed(handleLockStake);
+  Controller1.ButtonX.pressed(handleHitArm);
 
   // User control code here, inside the loop
   while (1) {
