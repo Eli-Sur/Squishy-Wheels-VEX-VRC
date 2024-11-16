@@ -105,11 +105,62 @@ bool RemoteControlCodeEnabled = true;
 /*  not every time that the robot is disabled.                               */
 /*---------------------------------------------------------------------------*/
 
+bool spinRamp = false;
+vex::directionType rampDirection = forward;
+bool lockedRamp = false;
+
+bool isRedAlliance = true;
+bool isRightSide = false;
+
+float timeTillSlam = 0.23f;
+
 void setFlipArm() {
   flipArm.setPosition(-10, degrees);
   flipArm.spinTo(0, degrees, true);
 }
 
+void setVelocity(float amount) {
+  leftTopMotor.setVelocity(amount, percent);
+  leftBackMotor.setVelocity(amount, percent);
+  rightBackMotor.setVelocity(amount, percent);
+  rightTopMotor.setVelocity(amount, percent);
+}
+
+void askUserForSideAndAlliance() {
+  Brain.Screen.setFillColor(red);
+  Brain.Screen.drawRectangle(0, 0, 239, 239);
+  Brain.Screen.setFillColor(blue);
+  Brain.Screen.drawRectangle(239, 0, 239, 239);
+  Brain.Screen.setFillColor(green);
+  Brain.Screen.setPenColor(black);
+  waitUntil(Brain.Screen.pressing());
+  isRedAlliance = Brain.Screen.xPosition() > 239;
+  Brain.Screen.clearScreen();
+
+  waitUntil(!Brain.Screen.pressing());
+
+  Brain.Screen.setFillColor(green);
+  Brain.Screen.drawRectangle(0, 0, 239, 239);
+  Brain.Screen.setFillColor(red);
+  Brain.Screen.drawRectangle(239, 0, 239, 239);
+  Brain.Screen.setFillColor(green);
+  Brain.Screen.setPenColor(black);
+  waitUntil(Brain.Screen.pressing());
+  isRightSide = Brain.Screen.xPosition() > 239;
+
+  Brain.Screen.clearScreen();
+  if(isRedAlliance) {
+    Brain.Screen.print("Red Alliance on ");
+  } else {
+    Brain.Screen.print("Blue Alliance on ");
+  }
+
+  if(isRightSide) {
+    Brain.Screen.print("right side.");
+  } else {
+    Brain.Screen.print("left side.");
+  }
+}
 
 void handleHitArm() {
   goalHitArm.spinTo(90, degrees, true);
@@ -121,73 +172,33 @@ void hitRing() {
   //waitUntil(switchSensor.pressing());
   //waitUntil(!switchSensor.pressing());
 
-  wait(0.2, seconds);
+  wait(timeTillSlam, seconds);
 
   handleHitArm();
   waitUntil(!goalHitArm.isSpinning());
   handleHitArm();
 }
 
-void pre_auton(void) {
-  leftTopMotor.setVelocity(100.0, percent);
-  leftBackMotor.setVelocity(100.0, percent);
-  rightBackMotor.setVelocity(100.0, percent);
-  rightTopMotor.setVelocity(100.0, percent);
-  intakeRamp.setVelocity(100.0, percent);
-  goalHitArm.setVelocity(100.0, percent);
-  goalHitArm.setPosition(170.0, degrees);
-  setFlipArm();
-  switchSensor.pressed(hitRing);
-
-  // All activities that occur before the competition starts
-  // Example: clearing encoders, setting servo positions, ...
-}
-
-/*---------------------------------------------------------------------------*/
-/*                                                                           */
-/*                              Autonomous Task                              */
-/*                                                                           */
-/*  This task is used to control your robot during the autonomous phase of   */
-/*  a VEX Competition.                                                       */
-/*                                                                           */
-/*  You must modify the code to add your own robot specific commands here.   */
-/*---------------------------------------------------------------------------*/
-
-
-/*---------------------------------------------------------------------------*/
-/*                                                                           */
-/*                              User Control Task                            */
-/*                                                                           */
-/*  This task is used to control your robot during the user control phase of */
-/*  a VEX Competition.                                                       */
-/*                                                                           */
-/*  You must modify the code to add your own robot specific commands here.   */
-/*---------------------------------------------------------------------------*/
-
-bool spinRamp = false;
-vex::directionType rampDirection = forward;
-bool lockedRamp = false;
-
 void driveForward(float numSquares) {
-  float squareInTurns = 24.0 / ((1.5) * (1.5) * (3.14159));
+  float squareInTurns = 24.0 / ((1.5) * 2 * (3.14159));
 
-  rightBackMotor.spinTo(squareInTurns * numSquares, turns, false);
-  leftBackMotor.spinTo(squareInTurns * numSquares, turns, false);
-  rightTopMotor.spinTo(squareInTurns * numSquares, turns, false);
-  leftTopMotor.spinTo(squareInTurns * numSquares, turns, true);
+  rightBackMotor.spinFor(squareInTurns * numSquares, turns, false);
+  leftBackMotor.spinFor(squareInTurns * numSquares, turns, false);
+  rightTopMotor.spinFor(squareInTurns * numSquares, turns, false);
+  leftTopMotor.spinFor(squareInTurns * numSquares, turns, true);
 }
 
-void trunRight(float degree) {
-  float degreeInTurns = (6.5 * 6.5) / ((1.5) * (1.5));
+void turnRight(float degree) {
+  float degreeInTurns = ((6.5) / (1.5)) / 360.0 - 0.0005;
 
-  rightBackMotor.spinTo(degreeInTurns * degree * -1, turns, false);
-  leftBackMotor.spinTo(degreeInTurns * degree, turns, false);
-  rightTopMotor.spinTo(degreeInTurns * degree * -1, turns, false);
-  leftTopMotor.spinTo(degreeInTurns * degree , turns, true);
+  rightBackMotor.spinFor(degreeInTurns * degree * -1, turns, false);
+  leftBackMotor.spinFor(degreeInTurns * degree, turns, false);
+  rightTopMotor.spinFor(degreeInTurns * degree * -1, turns, false);
+  leftTopMotor.spinFor(degreeInTurns * degree, turns, true);
 }
 
 void turnLeft(float degree) {
-  trunRight(degree * -1);
+  turnRight(degree * -1);
 }
 
 
@@ -199,6 +210,12 @@ void handleRampForward() {
     rampDirection = forward;
   } else {
     rampDirection = forward;
+  }
+
+  if(spinRamp) {
+    intakeRamp.spin(rampDirection, 12, volt);
+  } else {
+    intakeRamp.stop();
   }
   //waitUntil(!Controller1.ButtonR1.pressing());
 }
@@ -212,6 +229,12 @@ void handleRampReverse() {
   } else {
     rampDirection = reverse;
   }
+
+  if(spinRamp) {
+    intakeRamp.spin(rampDirection, 12, volt);
+  } else {
+    intakeRamp.stop();
+  }
   //waitUntil(!Controller1.ButtonR2.pressing());
 }
 
@@ -220,6 +243,7 @@ void handleLockStake() {
 
   if(!lockedRamp) {
     flipArm.spin(forward, 10.0, volt);
+    flipArm.spinTo(160, degrees, false);
   } else {
     flipArm.stop();
     flipArm.spinTo(100, degrees, false);
@@ -228,37 +252,164 @@ void handleLockStake() {
   lockedRamp = !lockedRamp;
 }
 
+void incrementTimeTillSlam() {
+  timeTillSlam += 0.01;
 
-void autonomous(void) {
-  // ..........................................................................
-  // Insert autonomous user code here.
-  // ..........................................................................
+  Controller1.Screen.clearScreen();
+  Controller1.Screen.setCursor(1, 1);
+  Controller1.Screen.print("%.2f", timeTillSlam);
+}
 
+void decrementTimeTillSlam() {
+  timeTillSlam -= 0.01;
+
+  Controller1.Screen.clearScreen();
+  Controller1.Screen.setCursor(1, 1);
+  Controller1.Screen.print("%.2f", timeTillSlam);
+}
+
+/*---------------------------------------------------------------------------*/
+/*                                                                           */
+/*                              Autonomous Task                              */
+/*                                                                           */
+/*  This task is used to control your robot during the autonomous phase of   */
+/*  a VEX Competition.                                                       */
+/*                                                                           */
+/*  You must modify the code to add your own robot specific commands here.   */
+/*---------------------------------------------------------------------------*/
+
+void pre_auton(void) {
+  intakeRamp.setVelocity(100.0, percent);
+  goalHitArm.setVelocity(50.0, percent);
+  goalHitArm.setPosition(170.0, degrees);
+  setFlipArm();
+  switchSensor.pressed(hitRing);
+
+  askUserForSideAndAlliance();
+}
+
+void weirdAuton() {
+  driveForward(1.5);
+  turnLeft(100);
+  driveForward(0.5);
+  turnLeft(100);
+
+
+  goalHitArm.spinTo(0, degrees);
+  flipArm.spinTo(100, degrees);
+
+  driveForward(-0.7);
+
+  handleLockStake();
+  wait(0.1, seconds);
+
+  driveForward(0.7);
+  handleRampForward();
+  wait(0.2, seconds);
+
+  turnRight(100);
   driveForward(1);
+
+  handleRampForward();
+  handleLockStake();
+  turnRight(45);
+  driveForward(1);
+}
+
+void redRightAtonomous() {
+  driveForward(0.5);
   turnLeft(180);
+
+  goalHitArm.spinTo(0, degrees);
+  flipArm.spinTo(100, degrees);
+
   driveForward(-1);
 
   handleLockStake();
+
+  driveForward(-0.2);
 
   turnLeft(90);
   handleRampForward();
   driveForward(1);
+  wait(0.2, seconds);
   driveForward(-1);
   turnLeft(120);
 
   handleLockStake();
+  handleRampForward();
 
   driveForward(1);
 }
 
-void usercontrol(void) {
+void redLeftAtonomous() {
+  driveForward(0.5);
+  turnRight(180);
+
   goalHitArm.spinTo(0, degrees);
   flipArm.spinTo(100, degrees);
+
+  driveForward(-1);
+
+  handleLockStake();
+
+  driveForward(-0.2);
+
+  turnRight(110);
+  handleRampForward();
+  driveForward(1);
+  wait(0.2, seconds);
+  driveForward(-1);
+  turnRight(120);
+
+  handleLockStake();
+  handleRampForward();
+
+  driveForward(1);
+}
+
+void autonomous(void) {
+  setVelocity(60.0);
+
+  // weirdAuton();
+  // return;
+  
+  if(isRedAlliance) {
+    if(isRightSide) {
+      redRightAtonomous();
+    } else {
+      redLeftAtonomous();
+    }
+  } else {
+    if(isRightSide) {
+      redRightAtonomous();
+    } else {
+      redLeftAtonomous();
+    }
+  }
+}
+
+/*---------------------------------------------------------------------------*/
+/*                                                                           */
+/*                              User Control Task                            */
+/*                                                                           */
+/*  This task is used to control your robot during the user control phase of */
+/*  a VEX Competition.                                                       */
+/*                                                                           */
+/*  You must modify the code to add your own robot specific commands here.   */
+/*---------------------------------------------------------------------------*/
+
+void usercontrol(void) {
+  setVelocity(100.0);
+  goalHitArm.spinTo(0, degrees);
+  flipArm.spinTo(100, degrees, false);
 
   Controller1.ButtonR1.pressed(handleRampForward);
   Controller1.ButtonR2.pressed(handleRampReverse);
   Controller1.ButtonL2.pressed(handleLockStake);
   Controller1.ButtonX.pressed(handleHitArm);
+  Controller1.ButtonDown.pressed(decrementTimeTillSlam);
+  Controller1.ButtonUp.pressed(incrementTimeTillSlam);
 
   // User control code here, inside the loop
   while (1) {
@@ -269,11 +420,7 @@ void usercontrol(void) {
     leftBackMotor.spin(forward, (Controller1.Axis3.position() + Controller1.Axis1.position() / 2) / 90.0 * 12, volt);
     rightTopMotor.spin(forward, (Controller1.Axis3.position() - Controller1.Axis1.position() / 2) / 90.0 * 12, volt);
     rightBackMotor.spin(forward, (Controller1.Axis3.position() - Controller1.Axis1.position() / 2) / 90.0 * 12, volt);
-    if(spinRamp) {
-      intakeRamp.spin(rampDirection, 12, volt);
-    } else {
-      intakeRamp.stop();
-    }
+    
     // ........................................................................
     // Insert user code here. This is where you use the joystick values to
     // update your motors, etc.
