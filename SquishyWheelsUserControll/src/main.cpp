@@ -48,11 +48,9 @@ motor leftBackMotor = motor(PORT11, ratio18_1, false);
 
 motor rightBackMotor = motor(PORT20, ratio18_1, true);
 
+digital_out clamp = digital_out(Brain.ThreeWirePort.A);
+
 motor intakeRamp = motor(PORT17, ratio18_1, false);
-
-motor flipArm = motor(PORT15, ratio36_1, false);
-
-motor goalHitArm = motor(PORT18, ratio18_1, false);
 
 limit switchSensor = limit(Brain.ThreeWirePort.H);
 
@@ -114,11 +112,6 @@ bool isRightSide = false;
 
 float timeTillSlam = 0.23f;
 
-void setFlipArm() {
-  flipArm.setPosition(-10, degrees);
-  flipArm.spinTo(0, degrees, true);
-}
-
 void setVelocity(float amount) {
   leftTopMotor.setVelocity(amount, percent);
   leftBackMotor.setVelocity(amount, percent);
@@ -160,23 +153,6 @@ void askUserForSideAndAlliance() {
   } else {
     Brain.Screen.print("left side.");
   }
-}
-
-void handleHitArm() {
-  goalHitArm.spinTo(90, degrees, true);
-  goalHitArm.spinTo(0, degrees, false);
-}
-
-void hitRing() {
-  waitUntil(!switchSensor.pressing());
-  //waitUntil(switchSensor.pressing());
-  //waitUntil(!switchSensor.pressing());
-
-  wait(timeTillSlam, seconds);
-
-  handleHitArm();
-  waitUntil(!goalHitArm.isSpinning());
-  handleHitArm();
 }
 
 void driveForward(float numSquares) {
@@ -238,18 +214,10 @@ void handleRampReverse() {
   //waitUntil(!Controller1.ButtonR2.pressing());
 }
 
-void handleLockStake() {
-  //waitUntil(!Controller1.ButtonL1.pressing());
-
-  if(!lockedRamp) {
-    flipArm.spin(forward, 10.0, volt);
-    flipArm.spinTo(160, degrees, false);
-  } else {
-    flipArm.stop();
-    flipArm.spinTo(100, degrees, false);
-  }
-
-  lockedRamp = !lockedRamp;
+bool state = false;
+void handlePneumaticClamp() {
+  clamp.set(!state);
+  state = !state;
 }
 
 void incrementTimeTillSlam() {
@@ -280,10 +248,6 @@ void decrementTimeTillSlam() {
 
 void pre_auton(void) {
   intakeRamp.setVelocity(100.0, percent);
-  goalHitArm.setVelocity(50.0, percent);
-  goalHitArm.setPosition(170.0, degrees);
-  setFlipArm();
-  switchSensor.pressed(hitRing);
 
   askUserForSideAndAlliance();
 }
@@ -294,13 +258,8 @@ void weirdAuton() {
   driveForward(0.5);
   turnLeft(100);
 
-
-  goalHitArm.spinTo(0, degrees);
-  flipArm.spinTo(100, degrees);
-
   driveForward(-0.7);
 
-  handleLockStake();
   wait(0.1, seconds);
 
   driveForward(0.7);
@@ -311,7 +270,6 @@ void weirdAuton() {
   driveForward(1);
 
   handleRampForward();
-  handleLockStake();
   turnRight(45);
   driveForward(1);
 }
@@ -320,12 +278,7 @@ void redRightAtonomous() {
   driveForward(0.5);
   turnLeft(180);
 
-  goalHitArm.spinTo(0, degrees);
-  flipArm.spinTo(100, degrees);
-
   driveForward(-1);
-
-  handleLockStake();
 
   driveForward(-0.2);
 
@@ -336,7 +289,6 @@ void redRightAtonomous() {
   driveForward(-1);
   turnLeft(120);
 
-  handleLockStake();
   handleRampForward();
 
   driveForward(1);
@@ -346,12 +298,7 @@ void redLeftAtonomous() {
   driveForward(0.5);
   turnRight(180);
 
-  goalHitArm.spinTo(0, degrees);
-  flipArm.spinTo(100, degrees);
-
   driveForward(-1);
-
-  handleLockStake();
 
   driveForward(-0.2);
 
@@ -362,7 +309,7 @@ void redLeftAtonomous() {
   driveForward(-1);
   turnRight(120);
 
-  handleLockStake();
+  // handleLockStake();
   handleRampForward();
 
   driveForward(1);
@@ -370,9 +317,6 @@ void redLeftAtonomous() {
 
 void autonomous(void) {
   setVelocity(60.0);
-
-  // weirdAuton();
-  // return;
   
   if(isRedAlliance) {
     if(isRightSide) {
@@ -401,13 +345,10 @@ void autonomous(void) {
 
 void usercontrol(void) {
   setVelocity(100.0);
-  goalHitArm.spinTo(0, degrees);
-  flipArm.spinTo(100, degrees, false);
 
+  Controller1.ButtonX.pressed(handlePneumaticClamp);
   Controller1.ButtonR1.pressed(handleRampForward);
   Controller1.ButtonR2.pressed(handleRampReverse);
-  Controller1.ButtonL2.pressed(handleLockStake);
-  Controller1.ButtonX.pressed(handleHitArm);
   Controller1.ButtonDown.pressed(decrementTimeTillSlam);
   Controller1.ButtonUp.pressed(incrementTimeTillSlam);
 
