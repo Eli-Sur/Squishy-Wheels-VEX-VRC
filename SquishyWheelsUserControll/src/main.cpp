@@ -42,15 +42,17 @@ brain Brain;
 // Robot configuration code.
 motor leftTopMotor = motor(PORT1, ratio18_1, false);
 
-motor rightTopMotor = motor(PORT10, ratio18_1, true);
+motor rightTopMotor = motor(PORT20, ratio18_1, true);
 
-motor leftBackMotor = motor(PORT11, ratio18_1, false);
+motor leftBackMotor = motor(PORT10, ratio18_1, false);
 
-motor rightBackMotor = motor(PORT20, ratio18_1, true);
+motor rightBackMotor = motor(PORT11, ratio18_1, true);
 
 digital_out clamp = digital_out(Brain.ThreeWirePort.A);
 
-motor intakeRamp = motor(PORT17, ratio18_1, false);
+motor scoringChain = motor(PORT17, ratio18_1, false);
+
+motor intakeWheels = motor(PORT8, ratio18_1, false);
 
 limit switchSensor = limit(Brain.ThreeWirePort.H);
 
@@ -110,7 +112,7 @@ bool lockedRamp = false;
 bool isRedAlliance = true;
 bool isRightSide = false;
 
-float timeTillSlam = 0.23f;
+float powerToRamp = 9.0f;
 
 void setVelocity(float amount) {
   leftTopMotor.setVelocity(amount, percent);
@@ -189,9 +191,11 @@ void handleRampForward() {
   }
 
   if(spinRamp) {
-    intakeRamp.spin(rampDirection, 12, volt);
+    scoringChain.spin(rampDirection, powerToRamp, volt);
+    intakeWheels.spin(rampDirection, 9, volt);
   } else {
-    intakeRamp.stop();
+    scoringChain.stop();
+    intakeWheels.stop();
   }
   //waitUntil(!Controller1.ButtonR1.pressing());
 }
@@ -207,9 +211,11 @@ void handleRampReverse() {
   }
 
   if(spinRamp) {
-    intakeRamp.spin(rampDirection, 12, volt);
+    scoringChain.spin(rampDirection, powerToRamp, volt);
+    intakeWheels.spin(rampDirection, 9, volt);
   } else {
-    intakeRamp.stop();
+    scoringChain.stop();
+    intakeWheels.stop();
   }
   //waitUntil(!Controller1.ButtonR2.pressing());
 }
@@ -220,20 +226,20 @@ void handlePneumaticClamp() {
   state = !state;
 }
 
-void incrementTimeTillSlam() {
-  timeTillSlam += 0.01;
+void incrementPowerToRamp() {
+  powerToRamp += 0.5;
 
   Controller1.Screen.clearScreen();
   Controller1.Screen.setCursor(1, 1);
-  Controller1.Screen.print("%.2f", timeTillSlam);
+  Controller1.Screen.print("%.2f", powerToRamp);
 }
 
-void decrementTimeTillSlam() {
-  timeTillSlam -= 0.01;
+void decrementPowerToRamp() {
+  powerToRamp -= 0.5;
 
   Controller1.Screen.clearScreen();
   Controller1.Screen.setCursor(1, 1);
-  Controller1.Screen.print("%.2f", timeTillSlam);
+  Controller1.Screen.print("%.2f", powerToRamp);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -247,7 +253,7 @@ void decrementTimeTillSlam() {
 /*---------------------------------------------------------------------------*/
 
 void pre_auton(void) {
-  intakeRamp.setVelocity(100.0, percent);
+  scoringChain.setVelocity(100.0, percent);
 
   askUserForSideAndAlliance();
 }
@@ -317,6 +323,22 @@ void redLeftAtonomous() {
 
 void autonomous(void) {
   setVelocity(60.0);
+
+  driveForward(0.8);
+
+  turnRight(180);
+
+  driveForward(-0.7);
+
+  handlePneumaticClamp();
+
+  handleRampForward();
+
+  wait(1, seconds);
+
+  handleRampForward();
+
+  return;
   
   if(isRedAlliance) {
     if(isRightSide) {
@@ -343,14 +365,63 @@ void autonomous(void) {
 /*  You must modify the code to add your own robot specific commands here.   */
 /*---------------------------------------------------------------------------*/
 
+bool aboveLine(double x, double y, double px1, double py1, double px2, double py2) {
+  return (py2 - py1) * (x - px1) / (px2 - px1) + py1 <= y;
+}
+
+void drawStar() {
+  double pi = 3.1415926535;
+  double xVals[5] = {cos(pi / 10.0), 0, cos(pi - pi / 10.0), cos(pi + 3 * pi / 10), cos(2 * pi - 3 * pi / 10)};
+  double yVals[5] = {sin(pi / 10.0), 1, sin(pi - pi / 10.0), sin(pi + 3 * pi / 10), sin(2 * pi - 3 * pi / 10)};
+
+  for(int x = 0; x < 239; x++) {
+    double mappedX = (x * 2.0 / 239.0 - 1) * -1;
+    for(int y = 10; y < 249; y++) {
+      double mappedY = ((y-10) * 2.0 / 239.0 - 1) * -1;
+
+      if(mappedY > yVals[0]) {
+        if(!aboveLine(mappedX, mappedY, xVals[1], yVals[1], xVals[3], yVals[3]) && !aboveLine(mappedX, mappedY, xVals[1], yVals[1], xVals[4], yVals[4])) {
+          Brain.Screen.drawPixel(x, y);
+        }
+      } else if(aboveLine(mappedX, mappedY, xVals[2], yVals[2], xVals[4], yVals[4])) {
+        if(aboveLine(mappedX, mappedY, xVals[0], yVals[0], xVals[3], yVals[3])) {
+          Brain.Screen.drawPixel(x, y);
+        } else if(!aboveLine(mappedX, mappedY, xVals[1], yVals[1], xVals[4], yVals[4])) {
+          Brain.Screen.drawPixel(x, y);
+        }
+      } else if(aboveLine(mappedX, mappedY, xVals[0], yVals[0], xVals[3], yVals[3]) && !aboveLine(mappedX, mappedY, xVals[1], yVals[1], xVals[3], yVals[3])) {
+        Brain.Screen.drawPixel(x, y);
+      }
+    }
+  }
+}
+
+void drawTexanFlag() {
+  Brain.Screen.clearScreen();
+  Brain.Screen.setFillColor(blue);
+  Brain.Screen.drawRectangle(0, 0, 239, 239);
+  Brain.Screen.setFillColor(white);
+  Brain.Screen.drawRectangle(239, 0, 239, 239 / 2);
+  Brain.Screen.setFillColor(red);
+  Brain.Screen.drawRectangle(239, 239 / 2, 239, 239);
+  
+  Brain.Screen.setFillColor(white);
+  drawStar();
+  // Brain.Screen.drawCircle(239 / 2, 239 / 2, 239 / 2 - 30);
+  // Brain.Screen.setFillColor(blue);
+  // Brain.Screen.drawCircle(239 / 2, 239 / 2, 239 / 3 - 30);
+}
+
 void usercontrol(void) {
   setVelocity(100.0);
+
+  drawTexanFlag();
 
   Controller1.ButtonX.pressed(handlePneumaticClamp);
   Controller1.ButtonR1.pressed(handleRampForward);
   Controller1.ButtonR2.pressed(handleRampReverse);
-  Controller1.ButtonDown.pressed(decrementTimeTillSlam);
-  Controller1.ButtonUp.pressed(incrementTimeTillSlam);
+  Controller1.ButtonDown.pressed(decrementPowerToRamp);
+  Controller1.ButtonUp.pressed(incrementPowerToRamp);
 
   // User control code here, inside the loop
   while (1) {
