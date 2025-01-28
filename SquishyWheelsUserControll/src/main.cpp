@@ -192,7 +192,7 @@ void handleRampForward() {
 
   if(spinRamp) {
     scoringChain.spin(rampDirection, powerToRamp, volt);
-    intakeWheels.spin(rampDirection, 9, volt);
+    intakeWheels.spin(rampDirection, 12, volt);
   } else {
     scoringChain.stop();
     intakeWheels.stop();
@@ -428,10 +428,10 @@ void usercontrol(void) {
     // This is the main execution loop for the user control program.
     // Each time through the loop your program should update motor + servo
     // values based on feedback from the joysticks.
-    leftTopMotor.spin(forward, (Controller1.Axis3.position() + Controller1.Axis1.position() / 2) / 90.0 * 12, volt);
-    leftBackMotor.spin(forward, (Controller1.Axis3.position() + Controller1.Axis1.position() / 2) / 90.0 * 12, volt);
-    rightTopMotor.spin(forward, (Controller1.Axis3.position() - Controller1.Axis1.position() / 2) / 90.0 * 12, volt);
-    rightBackMotor.spin(forward, (Controller1.Axis3.position() - Controller1.Axis1.position() / 2) / 90.0 * 12, volt);
+    leftTopMotor.spin(forward, (Controller1.Axis3.position() + Controller1.Axis1.position()) / 90.0 * 12, volt);
+    leftBackMotor.spin(forward, (Controller1.Axis3.position() + Controller1.Axis1.position()) / 90.0 * 12, volt);
+    rightTopMotor.spin(forward, (Controller1.Axis3.position() - Controller1.Axis1.position()) / 90.0 * 12, volt);
+    rightBackMotor.spin(forward, (Controller1.Axis3.position() - Controller1.Axis1.position()) / 90.0 * 12, volt);
     
     // ........................................................................
     // Insert user code here. This is where you use the joystick values to
