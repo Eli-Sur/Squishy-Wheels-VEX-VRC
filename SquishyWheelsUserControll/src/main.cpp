@@ -109,7 +109,7 @@ bool spinRamp = false;
 vex::directionType rampDirection = forward;
 bool lockedRamp = false;
 
-bool isRedAlliance = true;
+bool isRedAlliance = false;
 bool isRightSide = false;
 
 float powerToRamp = 9.0f;
@@ -129,7 +129,7 @@ void askUserForSideAndAlliance() {
   Brain.Screen.setFillColor(green);
   Brain.Screen.setPenColor(black);
   waitUntil(Brain.Screen.pressing());
-  isRedAlliance = Brain.Screen.xPosition() > 239;
+  isRedAlliance = Brain.Screen.xPosition() < 239;
   Brain.Screen.clearScreen();
 
   waitUntil(!Brain.Screen.pressing());
@@ -167,7 +167,7 @@ void driveForward(float numSquares) {
 }
 
 void turnRight(float degree) {
-  float degreeInTurns = ((6.5) / (1.5)) / 360.0 - 0.0005;
+  float degreeInTurns = ((14.0) / (3.0)) / 360.0 - 0.0025;
 
   rightBackMotor.spinFor(degreeInTurns * degree * -1, turns, false);
   leftBackMotor.spinFor(degreeInTurns * degree, turns, false);
@@ -177,6 +177,20 @@ void turnRight(float degree) {
 
 void turnLeft(float degree) {
   turnRight(degree * -1);
+}
+
+void slipRight(float degree) {
+  float degreeInTurnsForLeftMotors = ((13.0 * 2) / (3.0)) / 360.0 - 0.001;
+
+  leftBackMotor.spinFor(degreeInTurnsForLeftMotors * degree, turns, false);
+  leftTopMotor.spinFor(degreeInTurnsForLeftMotors * degree, turns, true);
+}
+
+void slipLeft(float degree) {
+  float degreeInTurnsForRightMotors = ((13.0 * 2) / (3.0)) / 360.0 - 0.001;
+
+  rightBackMotor.spinFor(degreeInTurnsForRightMotors * degree, turns, false);
+  rightTopMotor.spinFor(degreeInTurnsForRightMotors * degree, turns, true);
 }
 
 
@@ -252,93 +266,93 @@ void decrementPowerToRamp() {
 /*  You must modify the code to add your own robot specific commands here.   */
 /*---------------------------------------------------------------------------*/
 
-void pre_auton(void) {
-  scoringChain.setVelocity(100.0, percent);
-
-  askUserForSideAndAlliance();
-}
-
-void weirdAuton() {
-  driveForward(1.5);
-  turnLeft(100);
-  driveForward(0.5);
-  turnLeft(100);
-
-  driveForward(-0.7);
-
-  wait(0.1, seconds);
-
-  driveForward(0.7);
-  handleRampForward();
-  wait(0.2, seconds);
-
-  turnRight(100);
-  driveForward(1);
-
-  handleRampForward();
-  turnRight(45);
-  driveForward(1);
-}
-
 void redRightAtonomous() {
-  driveForward(0.5);
-  turnLeft(180);
+  driveForward(0.8); // drive forward 0.8 squares
+  turnRight(190); // turn around
+  driveForward(-0.7); // drive backward 0.7 squares
+  setVelocity(10.0); // slow down to grab mobile goal
+  driveForward(-0.1); // back up to modile goal
+  handlePneumaticClamp(); // clamp mobile goal
+  setVelocity(60.0); // go back to normal speed
+  handleRampForward(); // score starter ring
+  wait(1, seconds);
+  slipLeft(135); // turn to the left. Heavier so turning needs to be greater.
+  driveForward(0.5); // drive forward one square into a ring
+  wait(1, seconds); // pick up ring and score
+  driveForward(-0.2); // back up to not intake blue ring
+  // slipRight(90); // turn to another ring
+  // driveForward(1); // grab ring
+  // wait(2, seconds); // score ring
+  handleRampReverse(); // Reverse ramp to expell ring.
+  wait(2, seconds);
+  handleRampReverse();
+}
 
-  driveForward(-1);
-
-  driveForward(-0.2);
-
-  turnLeft(90);
-  handleRampForward();
-  driveForward(1);
-  wait(0.2, seconds);
-  driveForward(-1);
-  turnLeft(120);
-
-  handleRampForward();
-
-  driveForward(1);
+void blueLeftAtonomous() {
+  driveForward(0.8); // drive forward 0.8 squares
+  turnLeft(190); // turn around
+  driveForward(-0.7); // drive backward 0.7 squares
+  setVelocity(10.0); // slow down to grab mobile goal
+  driveForward(-0.1); // back up to modile goal
+  handlePneumaticClamp(); // clamp mobile goal
+  setVelocity(60.0); // go back to normal speed
+  handleRampForward(); // score starter ring
+  wait(1, seconds);
+  slipRight(125); // turn to the left. Heavier so turning needs to be greater.
+  driveForward(0.5); // drive forward one square into a ring
+  wait(1, seconds); // pick up ring and score
+  driveForward(-0.2); // back up to not intake blue ring
+  // slipLeft(90); // turn to another ring
+  // driveForward(1); // grab ring
+  // wait(2, seconds); // score ring
+  handleRampForward(); // Stop ramp.
 }
 
 void redLeftAtonomous() {
-  driveForward(0.5);
-  turnRight(180);
-
-  driveForward(-1);
-
-  driveForward(-0.2);
-
-  turnRight(110);
+  driveForward(0.8); // drive forward 0.8 squares
+  turnLeft(190); // turn around
+  driveForward(-0.7); // drive backward 0.7 squares
+  setVelocity(10.0); // slow down to grab mobile goal
+  driveForward(-0.1); // back up to modile goal
+  handlePneumaticClamp(); // clamp mobile goal
+  setVelocity(60.0); // go back to normal speed
+  handleRampForward(); // score starter ring
+  wait(1, seconds);
+  slipRight(120); // turn to the right. Heavier so turning needs to be greater.
+  driveForward(0.5); // drive forward one square into a ring
+  wait(1, seconds); // pick up ring and score
+  driveForward(-0.2); // back up to not intake blue ring
+  handleRampReverse(); // Expell blue ring.
+  wait(1, seconds);
+  slipRight(80.0);
   handleRampForward();
-  driveForward(1);
-  wait(0.2, seconds);
-  driveForward(-1);
-  turnRight(120);
+  driveForward(0.3);
+}
 
-  // handleLockStake();
+void blueRightAtonomous() {
+  driveForward(0.8); // drive forward 0.8 squares
+  turnRight(190); // turn around
+  driveForward(-0.7); // drive backward 0.7 squares
+  setVelocity(10.0); // slow down to grab mobile goal
+  driveForward(-0.1); // back up to modile goal
+  handlePneumaticClamp(); // clamp mobile goal
+  setVelocity(60.0); // go back to normal speed
+  handleRampForward(); // score starter ring
+  wait(1, seconds);
+  slipLeft(120); // turn to the right. Heavier so turning needs to be greater.
+  driveForward(0.5); // drive forward one square into a ring
+  wait(1, seconds); // pick up ring and score
+  driveForward(-0.2); // back up to not intake blue ring
+  handleRampReverse(); // Expell blue ring.
+  wait(1, seconds);
+  slipLeft(85.0);
   handleRampForward();
-
-  driveForward(1);
+  driveForward(0.3);
 }
 
 void autonomous(void) {
   setVelocity(60.0);
 
-  driveForward(0.8);
-
-  turnRight(180);
-
-  driveForward(-0.7);
-
-  handlePneumaticClamp();
-
-  handleRampForward();
-
-  wait(1, seconds);
-
-  handleRampForward();
-
-  return;
   
   if(isRedAlliance) {
     if(isRightSide) {
@@ -348,9 +362,9 @@ void autonomous(void) {
     }
   } else {
     if(isRightSide) {
-      redRightAtonomous();
+      blueRightAtonomous();
     } else {
-      redLeftAtonomous();
+      blueLeftAtonomous();
     }
   }
 }
@@ -412,19 +426,34 @@ void drawTexanFlag() {
   // Brain.Screen.drawCircle(239 / 2, 239 / 2, 239 / 3 - 30);
 }
 
+bool istesting = false;
+void turnRightTester() {
+  istesting = true;
+  setVelocity(60.0f);
+  slipRight(90);
+  setVelocity(100.0f);
+  istesting = false;
+}
+
+void turnLeftTester() {
+  istesting = true;
+  setVelocity(60.0f);
+  slipLeft(90);
+  setVelocity(100.0f);
+  istesting = false;
+}
+
 void usercontrol(void) {
   setVelocity(100.0);
 
   drawTexanFlag();
 
-  Controller1.ButtonX.pressed(handlePneumaticClamp);
-  Controller1.ButtonR1.pressed(handleRampForward);
-  Controller1.ButtonR2.pressed(handleRampReverse);
-  Controller1.ButtonDown.pressed(decrementPowerToRamp);
-  Controller1.ButtonUp.pressed(incrementPowerToRamp);
-
   // User control code here, inside the loop
   while (1) {
+    if(istesting) {
+      wait(20, msec);
+      continue;
+    }
     // This is the main execution loop for the user control program.
     // Each time through the loop your program should update motor + servo
     // values based on feedback from the joysticks.
@@ -441,6 +470,20 @@ void usercontrol(void) {
     wait(20, msec); // Sleep the task for a short amount of time to
                     // prevent wasted resources.
   }
+}
+
+void pre_auton(void) {
+  scoringChain.setVelocity(100.0, percent);
+
+  Controller1.ButtonX.pressed(handlePneumaticClamp);
+  Controller1.ButtonR1.pressed(handleRampForward);
+  Controller1.ButtonR2.pressed(handleRampReverse);
+  Controller1.ButtonRight.pressed(turnRightTester);
+  Controller1.ButtonLeft.pressed(turnLeftTester);
+  Controller1.ButtonDown.pressed(decrementPowerToRamp);
+  Controller1.ButtonUp.pressed(incrementPowerToRamp);
+
+  askUserForSideAndAlliance();
 }
 
 //
