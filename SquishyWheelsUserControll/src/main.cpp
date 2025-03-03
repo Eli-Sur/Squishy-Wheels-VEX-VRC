@@ -40,6 +40,11 @@ brain Brain;
 
 
 // Robot configuration code.
+vision::signature visionSensor__STAKE = vision::signature (1, -1903, -1289, -1596,-5049, -4107, -4578,2.5, 0);
+vision::signature visionSensor__REDRING = vision::signature (2, 10019, 12261, 11140,127, 799, 463,2.5, 0);
+vision::signature visionSensor__BLUERING = vision::signature (3, -4097, -3147, -3622,7899, 9557, 8728,2.5, 0);
+vision visionSensor = vision (PORT9, 50, visionSensor__STAKE, visionSensor__REDRING, visionSensor__BLUERING);
+
 motor leftTopMotor = motor(PORT1, ratio18_1, false);
 
 motor rightTopMotor = motor(PORT20, ratio18_1, true);
@@ -109,8 +114,9 @@ bool spinRamp = false;
 vex::directionType rampDirection = forward;
 bool lockedRamp = false;
 
-bool isRedAlliance = false;
-bool isRightSide = false;
+bool isRedAlliance = true;
+bool isRightSide = true;
+bool isSkills = true;
 
 float powerToRamp = 9.0f;
 
@@ -122,6 +128,20 @@ void setVelocity(float amount) {
 }
 
 void askUserForSideAndAlliance() {
+  if(isSkills) {
+    for(int i = 0 ; i < 4; i++) {
+      Brain.Screen.setFillColor(red);
+      Brain.Screen.drawRectangle(0, 0, 239 * 2, 239 * 2);
+      wait(0.5, seconds);
+      Brain.Screen.setFillColor(yellow);
+      Brain.Screen.drawRectangle(0, 0, 239 * 2, 239 * 2);
+      wait(0.5, seconds);
+    }
+    Brain.Screen.clearScreen();
+    Brain.Screen.print("Cuation: Skills Atounomus");
+    return;
+  }
+
   Brain.Screen.setFillColor(red);
   Brain.Screen.drawRectangle(0, 0, 239, 239);
   Brain.Screen.setFillColor(blue);
@@ -156,9 +176,9 @@ void askUserForSideAndAlliance() {
     Brain.Screen.print("left side.");
   }
 }
-
+ 
 void driveForward(float numSquares) {
-  float squareInTurns = 24.0 / ((1.5) * 2 * (3.14159));
+  float squareInTurns = 24.0 / (4.0 * (3.14159));
 
   rightBackMotor.spinFor(squareInTurns * numSquares, turns, false);
   leftBackMotor.spinFor(squareInTurns * numSquares, turns, false);
@@ -166,28 +186,35 @@ void driveForward(float numSquares) {
   leftTopMotor.spinFor(squareInTurns * numSquares, turns, true);
 }
 
-void turnRight(float degree) {
-  float degreeInTurns = ((14.0) / (3.0)) / 360.0 - 0.0025;
+void turnRight(float degree, bool tryToStop = true) {
+  float degreeInTurns = 0.00884037036;
 
   rightBackMotor.spinFor(degreeInTurns * degree * -1, turns, false);
   leftBackMotor.spinFor(degreeInTurns * degree, turns, false);
   rightTopMotor.spinFor(degreeInTurns * degree * -1, turns, false);
   leftTopMotor.spinFor(degreeInTurns * degree, turns, true);
+
+  if(tryToStop) {
+    rightBackMotor.spinFor(degreeInTurns * (degree < 0 ? -1 : 1), turns, false);
+    leftBackMotor.spinFor(degreeInTurns * (degree < 0 ? -1 : 1) * -1, turns, false);
+    rightTopMotor.spinFor(degreeInTurns * (degree < 0 ? -1 : 1), turns, false);
+    leftTopMotor.spinFor(degreeInTurns * (degree < 0 ? -1 : 1) * -1, turns, true);
+  }
 }
 
-void turnLeft(float degree) {
-  turnRight(degree * -1);
+void turnLeft(float degree, bool tryToStop = true) {
+  turnRight(degree * -1, tryToStop);
 }
 
 void slipRight(float degree) {
-  float degreeInTurnsForLeftMotors = ((13.0 * 2) / (3.0)) / 360.0 - 0.001;
+  float degreeInTurnsForLeftMotors = ((13.0 * 2) / (4.0)) / 360.0 - 0.001;
 
   leftBackMotor.spinFor(degreeInTurnsForLeftMotors * degree, turns, false);
   leftTopMotor.spinFor(degreeInTurnsForLeftMotors * degree, turns, true);
 }
 
 void slipLeft(float degree) {
-  float degreeInTurnsForRightMotors = ((13.0 * 2) / (3.0)) / 360.0 - 0.001;
+  float degreeInTurnsForRightMotors = ((13.0 * 2) / (4.0)) / 360.0 - 0.001;
 
   rightBackMotor.spinFor(degreeInTurnsForRightMotors * degree, turns, false);
   rightTopMotor.spinFor(degreeInTurnsForRightMotors * degree, turns, true);
@@ -256,6 +283,16 @@ void decrementPowerToRamp() {
   Controller1.Screen.print("%.2f", powerToRamp);
 }
 
+void turnToStake() {
+  visionSensor.takeSnapshot(visionSensor__STAKE);
+  while(visionSensor.largestObject.centerX < 200 - 20 || visionSensor.largestObject.centerX > 200 + 20) {
+    turnRight((visionSensor.largestObject.centerX - 200) / 200.0 * 10, false);
+    
+    wait(0.1, seconds);
+    visionSensor.takeSnapshot(visionSensor__STAKE);
+  }
+}
+
 /*---------------------------------------------------------------------------*/
 /*                                                                           */
 /*                              Autonomous Task                              */
@@ -268,17 +305,19 @@ void decrementPowerToRamp() {
 
 void redRightAtonomous() {
   driveForward(0.8); // drive forward 0.8 squares
-  turnRight(190); // turn around
+  turnRight(180); // turn around
   driveForward(-0.7); // drive backward 0.7 squares
   setVelocity(10.0); // slow down to grab mobile goal
+  turnToStake();
   driveForward(-0.1); // back up to modile goal
   handlePneumaticClamp(); // clamp mobile goal
   setVelocity(60.0); // go back to normal speed
+  driveForward(0.2);
   handleRampForward(); // score starter ring
   wait(1, seconds);
-  slipLeft(135); // turn to the left. Heavier so turning needs to be greater.
+  slipLeft(115); // turn to the left. Heavier so turning needs to be greater.
   driveForward(0.5); // drive forward one square into a ring
-  wait(1, seconds); // pick up ring and score
+  wait(2, seconds); // pick up ring and score
   driveForward(-0.2); // back up to not intake blue ring
   // slipRight(90); // turn to another ring
   // driveForward(1); // grab ring
@@ -293,6 +332,7 @@ void blueLeftAtonomous() {
   turnLeft(190); // turn around
   driveForward(-0.7); // drive backward 0.7 squares
   setVelocity(10.0); // slow down to grab mobile goal
+  turnToStake();
   driveForward(-0.1); // back up to modile goal
   handlePneumaticClamp(); // clamp mobile goal
   setVelocity(60.0); // go back to normal speed
@@ -305,7 +345,9 @@ void blueLeftAtonomous() {
   // slipLeft(90); // turn to another ring
   // driveForward(1); // grab ring
   // wait(2, seconds); // score ring
-  handleRampForward(); // Stop ramp.
+  handleRampReverse(); // Stop ramp.
+  wait(1, seconds);
+  handleRampReverse();
 }
 
 void redLeftAtonomous() {
@@ -313,14 +355,16 @@ void redLeftAtonomous() {
   turnLeft(190); // turn around
   driveForward(-0.7); // drive backward 0.7 squares
   setVelocity(10.0); // slow down to grab mobile goal
+  turnToStake();
   driveForward(-0.1); // back up to modile goal
   handlePneumaticClamp(); // clamp mobile goal
   setVelocity(60.0); // go back to normal speed
   handleRampForward(); // score starter ring
-  wait(1, seconds);
-  slipRight(120); // turn to the right. Heavier so turning needs to be greater.
-  driveForward(0.5); // drive forward one square into a ring
-  wait(1, seconds); // pick up ring and score
+  wait(0.2, seconds);
+  driveForward(-0.2);
+  slipRight(140); // turn to the right. Heavier so turning needs to be greater.
+  driveForward(0.2); // drive forward one square into a ring
+  wait(1.5, seconds); // pick up ring and score
   driveForward(-0.2); // back up to not intake blue ring
   handleRampReverse(); // Expell blue ring.
   wait(1, seconds);
@@ -334,25 +378,91 @@ void blueRightAtonomous() {
   turnRight(190); // turn around
   driveForward(-0.7); // drive backward 0.7 squares
   setVelocity(10.0); // slow down to grab mobile goal
+  turnToStake();
   driveForward(-0.1); // back up to modile goal
   handlePneumaticClamp(); // clamp mobile goal
   setVelocity(60.0); // go back to normal speed
   handleRampForward(); // score starter ring
-  wait(1, seconds);
+  wait(0.2, seconds);
   slipLeft(120); // turn to the right. Heavier so turning needs to be greater.
-  driveForward(0.5); // drive forward one square into a ring
+  driveForward(0.3); // drive forward one square into a ring
   wait(1, seconds); // pick up ring and score
-  driveForward(-0.2); // back up to not intake blue ring
-  handleRampReverse(); // Expell blue ring.
   wait(1, seconds);
-  slipLeft(85.0);
-  handleRampForward();
+  driveForward(-0.2); // back up to not intake blue ring
+  wait(1, seconds);
+  slipLeft(60.0); 
   driveForward(0.3);
+}
+
+void clampStake() {
+  setVelocity(10.0);
+  driveForward(-0.2);
+  handlePneumaticClamp();
+  wait(0.2, seconds);
+  setVelocity(100.0);
+}
+
+void circleTurn(float degree) {
+  float degreeInTurns = 0.00884037036;
+
+  rightBackMotor.spinFor(degreeInTurns * degree / 4.0, turns, false);
+  leftBackMotor.spinFor(degreeInTurns * degree, turns, false);
+  rightTopMotor.spinFor(degreeInTurns * degree / 4.0, turns, false);
+  leftTopMotor.spinFor(degreeInTurns * degree, turns, true);
+}
+
+void skillsAtonomous() {
+  driveForward(0.7);
+  turnLeft(95);
+  driveForward(-0.5);
+  turnToStake();
+  clampStake();
+
+  // handleRampForward();
+  // slipRight(120);
+  // driveForward(0.5);
+  // slipRight(180);
+  // driveForward(0.5);
+  // slipRight(100);
+  // driveForward(1);
+  // wait(2, seconds);
+  // slipRight(150);
+  // handlePneumaticClamp();
+  // driveForward(-1);
+  // wait(0.1, seconds);
+  // driveForward(1);
+  // handleRampForward();
+
+  driveForward(1);
+  handleRampForward();
+  wait(1, seconds);
+  slipRight(45);
+  handleRampForward();
+  handlePneumaticClamp();
+  driveForward(-3);
+  slipLeft(30);
+  driveForward(2);
+  slipRight(-90);
+  driveForward(-0.5);
+  wait(0.3, seconds);
+  turnRight(-90);
+  driveForward(-1);
+  turnToStake();
+  driveForward(-0.4);
+  clampStake();
+  turnLeft(45);
+  handlePneumaticClamp();
+  driveForward(-2);
+  driveForward(1);
 }
 
 void autonomous(void) {
   setVelocity(60.0);
 
+  if(isSkills) {
+    skillsAtonomous();
+    return;
+  }
   
   if(isRedAlliance) {
     if(isRightSide) {
@@ -443,8 +553,20 @@ void turnLeftTester() {
   istesting = false;
 }
 
+void grabStakeTester() {
+  istesting = true;
+  setVelocity(60);
+  turnToStake();
+  driveForward(-0.5);
+  clampStake();
+  istesting = false;
+}
+
 void usercontrol(void) {
   setVelocity(100.0);
+  // istesting = true;
+
+  
 
   drawTexanFlag();
 
@@ -454,6 +576,13 @@ void usercontrol(void) {
       wait(20, msec);
       continue;
     }
+    visionSensor.takeSnapshot(visionSensor__STAKE);
+    if(visionSensor.largestObject.exists) {
+      Controller1.Screen.clearScreen();
+      Controller1.Screen.setCursor(1, 1);
+      Controller1.Screen.print("Angle: %d", visionSensor.largestObject.centerX);
+    }
+
     // This is the main execution loop for the user control program.
     // Each time through the loop your program should update motor + servo
     // values based on feedback from the joysticks.
@@ -476,6 +605,7 @@ void pre_auton(void) {
   scoringChain.setVelocity(100.0, percent);
 
   Controller1.ButtonX.pressed(handlePneumaticClamp);
+  Controller1.ButtonB.pressed(grabStakeTester);
   Controller1.ButtonR1.pressed(handleRampForward);
   Controller1.ButtonR2.pressed(handleRampReverse);
   Controller1.ButtonRight.pressed(turnRightTester);
